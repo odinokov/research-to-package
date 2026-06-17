@@ -1,6 +1,6 @@
 ---
 name: research-to-package
-description: Use when the user wants to "productionize", "port", "package", "harden", "clean up", or "make installable" research, academic, or prototype code — loose scripts, notebooks, or a one-off repo — turn scripts/notebooks into a real library, get something `pip`/`uv`-installable, or build an HPC/SLURM-friendly tool that runs one unit of work per invocation, even when they don't say the word "package". The core promise is faithfulness: the science/output is preserved exactly while structure, typing, tests, and docs are brought to production standard.
+description: Use when the user wants to "productionize", "port", "package", "harden", "clean up", or "make installable" research, academic, or prototype code — loose scripts, notebooks, or a one-off repo — turn scripts/notebooks into a real library, get something `pip`/`uv`-installable, or build an HPC/SLURM-friendly tool that runs one unit of work per invocation, even when they don't say the word "package". The core promise is faithfulness — the science/output is preserved exactly while structure, typing, tests, and docs are brought to production standard.
 ---
 
 # Research → Production Package
