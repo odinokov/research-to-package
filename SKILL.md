@@ -11,6 +11,8 @@ Research code optimizes for getting a result once; production code optimizes for
 
 The original output is the spec. A hardened package that produces different numbers is a regression, no matter how clean it is. So every behavior-changing improvement (performance work, vectorization, library upgrades) is quarantined behind a regression test and explicit user approval. Structural and stylistic quality is always-on; anything that could move the output is opt-in and gated.
 
+**Faithfulness means scientific/data outputs and existing user-visible semantics.** Operational packaging behavior — import location, package metadata, logging plumbing, temporary-file routing, and an explicitly approved tool wrapper — may change where this skill requires it, provided those changes do not alter scientific/data results. Any intentional operational-interface change must be identified in Phase 0 and recorded in `CHANGELOG.md`.
+
 When you cannot tell whether a change affects output, treat it as if it does.
 
 **Violating the letter of these gates is violating their spirit.** "Technically the output didn't change" is not a defense if you skipped the re-run that would have proven it, and "I was following the intent" is not a defense for skipping a STOP. The checks ARE the intent.
@@ -31,9 +33,9 @@ PHASE 3  Tests + docs             → reports green, then STOP
 PHASE 4  Optimize (OPT-IN only)   → per-change diffs, gated
 ```
 
-The pipeline assumes "messy scripts," but real inputs are often already partway to a package. **Grade the source and collapse phases that are already satisfied** (see Phase 0) — a typed, tested module needs a structural touch-up, not a five-phase rewrite. State what you're collapsing and why.
+The pipeline assumes "messy scripts," but real inputs are often already partway to a package. **Grade the source and mark phases that are already satisfied as N/A** (see Phase 0) — a typed, tested module needs a structural touch-up, not a five-phase rewrite. You may skip an N/A phase after stating why in Phase 0, but never merge or bypass the STOP for any phase in which work is actually performed.
 
-### Phase 0 — Recon (change nothing)
+### Phase 0 — Recon (original source read-only)
 Read the source as read-only reference. Trace the real entrypoint from input to output. Produce:
 - **Source maturity grade** — script(s) → module → partial package → package. Grade it honestly and say which phases you are collapsing or skipping as a result.
 - **Shape: library or tool?** — a *library* (the importable API is the product, e.g. a scikit-learn estimator, a parser, a model class) vs a *tool* (file-in/file-out, one unit of work per invocation). This decides whether the Execution Contract and `cli.py` apply **at all**. A CLI bolted onto a library is dead scaffolding. When unclear, ask.
@@ -43,7 +45,8 @@ Read the source as read-only reference. Trace the real entrypoint from input to 
 - every hardcoded path, global, and assumption,
 - all temp-file / scratch usage,
 - code that is plausibly dead (mark it; do not delete yet),
-- hot loops that are candidates for the optional Phase 4.
+- hot loops that are candidates for the optional Phase 4,
+- a minimal representative regression fixture and the original output produced from it, stored outside the read-only source tree. If no suitable input exists, create a small synthetic fixture outside the source tree and run the original on it. If the original cannot run, STOP and obtain user-approved golden values before any behavior-touching port begins. Phase 3 turns this baseline into the committed regression test.
 
 STOP and present the plan. Resolve ambiguities with the user here, before writing any code.
 
@@ -51,12 +54,12 @@ STOP and present the plan. Resolve ambiguities with the user here, before writin
 Create the package skeleton (see Architecture) with stubs and a `pyproject.toml`, **in an isolated virtualenv pinned to the original's resolved dependency versions**. Do not migrate logic yet. STOP once `uv pip install -e .` (into that venv) succeeds and the package imports. If the install upgraded any runtime dependency, flag it — that is a faithfulness risk, not a detail.
 
 ### Phase 2 — Faithful port + always-on quality
-Move the logic into the new structure, applying the **always-on** quality standards below. **For a *tool***, wire the execution contract (CLI, config, logging, exit codes, tmp-dir routing). **For a *library***, skip all of that — the importable API is the entire surface. Output and behavior must match the original. STOP with a diff summary mapping what moved where (this seeds `CHANGELOG.md` — see Phase 3).
+Move the logic into the new structure, applying the **always-on** quality standards below. **For a *tool***, wire the execution contract (CLI, config, logging, exit codes, tmp-dir routing) only to the extent explicitly agreed in Phase 0. **For a *library***, skip all of that — the importable API is the entire surface. Scientific/data outputs and existing user-visible semantics must match the original, except for operational-interface changes explicitly approved in Phase 0. Re-run the Phase 0 regression baseline after every behavior-touching edit. STOP with a diff summary mapping what moved where (this seeds `CHANGELOG.md` — see Phase 3).
 
 ### Phase 3 — Tests + docs
-Add a small synthetic fixture (build it in code; commit no large data). Write unit tests for the core, a CLI smoke test *if it is a tool*, and — critically — a **regression test** asserting the new output matches the original baseline on the fixture. Use **exact equality for discrete/structured output** (labels, indices, JSON, arrays of ints); **explicit tolerance only for floats**. Capture the baseline by running the *original* on the fixture; if the original will not run, the user must supply or approve golden values before you proceed — never invent a baseline. Add Sphinx-autodoc-compatible docstrings and a README covering import usage, CLI usage *if a tool*, and (if relevant) a batch/SLURM snippet. Write a **CHANGELOG.md** that records every change from the original — grouped by phase — and, for each, *why* it was made (faithfulness-neutral cleanup, structural fix, documented strict-mode relaxation, gated Phase 4 optimization). Its audience is the original researcher: explain the benefit of each refactor so they can see the value and learn from it, rather than just listing diffs. Run the linter, the type checker (strict — see relaxations note below), and the tests; report results. STOP.
+Add a small synthetic fixture (build it in code; commit no large data). Write unit tests for the core, a CLI smoke test *if it is a tool*, and — critically — a **regression test** asserting the new output matches the original baseline on the fixture. Use **exact equality for discrete/structured output** (labels, indices, JSON, arrays of ints); **explicit tolerance only for floats**. Formalize the Phase 0 baseline as the committed regression test. If the baseline could not be captured in Phase 0, the user must supply or approve golden values before any behavior-touching work proceeds — never invent a baseline. Add Sphinx-autodoc-compatible docstrings and a README covering import usage, CLI usage *if a tool*, and (if relevant) a batch/SLURM snippet. Write a **CHANGELOG.md** that records every change from the original — grouped by phase — and, for each, *why* it was made (faithfulness-neutral cleanup, structural fix, documented strict-mode relaxation, gated Phase 4 optimization). Its audience is the original researcher: explain the benefit of each refactor so they can see the value and learn from it, rather than just listing diffs. Run the linter, the type checker (strict — see relaxations note below), and the tests; report results. STOP.
 
-### Phase 4 — Optimize (opt-in, behavior-changing)
+### Phase 4 — Optimize (opt-in, output-risking)
 Run ONLY if the user explicitly asks. Profile first; touch only proven hot loops. Library/dependency upgrades belong here, not earlier. Each change must keep the Phase 3 regression test green (exact, or within tolerance for floats) and be presented as a before/after diff with the measured speedup. Any change that pushes output past the baseline is reverted, not committed.
 
 ## Architecture (src layout)
@@ -98,7 +101,7 @@ Python: from <pkg> import run; run(input, output_dir, tmp_dir=None, threads=1, .
 - **Optional `--tmp-dir`** for scratch (e.g. node-local fast disk). Default to `$TMPDIR` if set, else the system temp dir. Route ALL intermediates there via `tempfile(dir=...)`, and always clean up on exit — including on failure.
 - **Exit code 0 on success, non-zero on any failure.** No interactive prompts.
 - **Logs/progress to stderr**; results/data to files or stdout only.
-- **Deterministic** given the same input + args. No network calls at runtime.
+- **Deterministic** given the same input + args. Add no new runtime network dependency. If the original inherently requires network access, preserve and flag it in Phase 0 rather than silently removing it.
 
 ## Code quality: two tiers
 
@@ -123,11 +126,11 @@ Hold the work to a high bar, but remember that SOLID + "extensibility" is exactl
 - Open/Closed and Liskov apply ONLY where real polymorphism already exists in the original.
 
 ## Forbidden (Phases 0–3)
-- Modifying, moving, or deleting anything in the source repo — it is read-only reference.
+- Modifying or deleting the **original source files** — they remain read-only reference. New package files may be created in the agreed target directory/worktree. Port logic by copying/refactoring from the original; do not destructively move the originals.
 - Adding dependencies beyond the original's (plus the test/lint/type toolchain) without asking.
 - Upgrading the original's dependency versions (that is Phase 4) — pin to what it resolved.
-- Adding features the original lacks: batch mode, config-file loaders, plotting, web/API, Docker, or CI.
-- Adding a CLI / execution contract to a *library* shape.
+- Adding features the original lacks: batch mode, config-file loaders, plotting, web/API, Docker, or CI. The one exception is the thin execution wrapper explicitly agreed in Phase 0 for a *tool* shape; it may expose existing functionality but must not add scientific capability.
+- Adding a CLI / execution contract to a *library* shape, or adding one to a *tool* unless the tool shape and wrapper surface were explicitly agreed in Phase 0.
 - Changing algorithm logic, constants, or output formats.
 - Optimizing or vectorizing (that is Phase 4).
 - Writing intermediates outside the resolved tmp-dir, or leaving scratch behind.
@@ -156,7 +159,7 @@ Every one of these means: stop, re-run the regression baseline, and present at t
 |--------|---------|
 | "Obviously behavior-neutral — skip the baseline re-run." | "Obviously" is how output drift ships. The baseline guards nothing unless you re-run it — every time, in every phase. |
 | "The diff is trivial, I'll skip this STOP." | Gates aren't sized to the diff; they're where the user catches scope creep, renamed outputs, and silent version bumps. STOP anyway. |
-| "The user wants it done, so I'll collapse the phases." | Only Phase 0 may collapse phases, only with a stated source grade and reason. Speed is not approval. |
+| "The user wants it done, so I'll collapse the phases." | Only Phase 0 may declare later phases N/A; phases containing actual work retain their individual STOPs. Speed is not approval. |
 | "I can tell this refactor won't change the output." | If you could tell without running it, you wouldn't need a regression test. When unsure, treat it as behavior-changing. |
 | "Upgrading numpy/this lib is harmless and cleaner." | A version bump moves numbers like a code edit can. That is gated Phase 4 work — never a silent Phase 2 detail. |
 | "This code is clearly dead, I'll just delete it." | Prove it (unreferenced and unreachable), flag it at a STOP, and delete only after the baseline re-runs green. When unsure, keep it. |
