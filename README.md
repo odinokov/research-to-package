@@ -1,5 +1,9 @@
 # research-to-package
 
+[![Claude Code skill](https://img.shields.io/badge/Claude_Code-skill-d97757)](https://claude.com/claude-code)
+[![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue)](LICENSE)
+[![Last commit](https://img.shields.io/github/last-commit/odinokov/research-to-package)](https://github.com/odinokov/research-to-package/commits/main)
+
 A Claude Code skill that turns a messy research/prototype codebase (loose scripts, notebooks, a one-off repo) into a production-grade, installable Python package — clean, typed, tested, documented, with an importable API (and a CLI when it's a file-in/file-out tool). Its governing rule is **faithfulness**: the science/output is preserved exactly while structure, typing, tests, and docs are brought to production standard.
 
 ## Requirements
