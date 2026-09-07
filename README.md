@@ -2,14 +2,6 @@
 
 A Claude Code skill that turns a messy research/prototype codebase (loose scripts, notebooks, a one-off repo) into a production-grade, installable Python package — clean, typed, tested, documented, with an importable API (and a CLI when it's a file-in/file-out tool). Its governing rule is **faithfulness**: the science/output is preserved exactly while structure, typing, tests, and docs are brought to production standard.
 
-## Contents
-
-```
-research-to-package/
-  SKILL.md     # the skill (workflow, phases, gates, quality bars)
-  README.md    # this file
-```
-
 ## Requirements
 
 - [Claude Code](https://claude.com/claude-code). Skills are auto-discovered from `SKILL.md` files in known locations — no build step.
@@ -44,8 +36,18 @@ Start (or restart) a Claude Code session in any project and confirm the skill is
 /research-to-package
 ```
 
-It also triggers automatically when you ask Claude to "productionize", "port", "package", "harden", or "make installable" research code.
+It also triggers automatically when you ask Claude to "productionize", "port", "package", "harden", "clean up", or "make installable" research code.
 
 ## Usage
 
-Ask Claude to productionize/package your code (or invoke `/research-to-package`); the skill drives it through phased gates (Recon → Scaffold → Port → Tests+docs → optional Optimize), stopping for your approval at each gate.
+In a Claude Code session inside your research code:
+
+```
+> productionize scripts/ into an installable package
+```
+
+The skill drives the work through phased gates (Recon → Scaffold → Port → Tests+docs → optional Optimize), stopping for your approval at each gate. You get a `src/`-layout package that installs with `pip`/`uv`, typed and documented, with a regression test asserting the new output matches the original's baseline exactly, and a `CHANGELOG.md` recording every change and why. Behavior-changing work (optimization, dependency upgrades) is opt-in and gated behind that regression test.
+
+## License
+
+[Unlicense](LICENSE) — public domain.
